@@ -1,0 +1,112 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-albert);
+  --font-display: var(--font-urbanist);
+  --font-heading: var(--font-urbanist);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-dark: var(--primary-dark);
+  --color-tint: var(--tint);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  /* The pastel tile palette: bg-matcha, bg-peach, bg-cloud, bg-butter, bg-clay. Text on them stays mocha. */
+  --color-cream: var(--cream);
+  --color-matcha: var(--matcha);
+  --color-peach: var(--peach);
+  --color-cloud: var(--cloud);
+  --color-butter: var(--butter);
+  --color-clay: var(--clay);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.25);
+  --radius-2xl: calc(var(--radius) * 1.5);
+  --radius-3xl: calc(var(--radius) * 2);
+}
+
+:root {
+  /* Café palette: cream paper, mocha ink, and five pastel tiles. No borders or shadows: colour blocks do the work. */
+  --cream: oklch(0.975 0.012 75);
+  --mocha: oklch(0.32 0.04 50);
+  --matcha: oklch(0.92 0.05 150);
+  --peach: oklch(0.9 0.06 50);
+  --cloud: oklch(0.92 0.04 230);
+  --butter: oklch(0.94 0.07 95);
+  --clay: oklch(0.9 0.04 20);
+
+  --primary: var(--mocha);
+  --primary-dark: oklch(0.24 0.035 50);
+  --primary-foreground: var(--cream);
+  --tint: oklch(0.945 0.018 72); /* toasted cream for inputs, chips and quiet panels */
+  --ring: var(--mocha);
+  --background: var(--cream);
+  --foreground: oklch(0.29 0.04 50);
+  --card: oklch(0.995 0.005 80);
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --secondary: var(--tint);
+  --secondary-foreground: var(--foreground);
+  --accent: var(--peach);
+  --accent-foreground: var(--foreground);
+  --muted: oklch(0.935 0.016 70);
+  --muted-foreground: oklch(0.47 0.035 55); /* AA on cream and on every pastel tile */
+  --destructive: oklch(0.52 0.19 28);
+  --border: oklch(0.88 0.02 70);
+  --input: oklch(0.88 0.02 70);
+  --radius: 1.25rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  html {
+    @apply font-sans;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-urbanist);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+  }
+  ::selection {
+    background: var(--butter);
+    color: var(--mocha);
+  }
+}
+
+/* Mocha text link with a soft underline that firms up on hover. */
+@utility link {
+  font-weight: 700;
+  color: var(--primary);
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
+  text-decoration-color: color-mix(in oklch, var(--primary) 35%, transparent);
+  &:hover {
+    text-decoration-color: var(--primary);
+  }
+}
