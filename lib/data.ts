@@ -274,8 +274,7 @@ const taxonomy = memo(async () => {
       categories: cats.sort((a, b) => b.total - a.total),
     }))
     .sort((a, b) => b.total - a.total);
-  const cities = cityRows
-    .filter((r) => byCity.has(r.id))
+  const allCities = cityRows
     .map(
       (r): City => ({
         id: r.id,
@@ -285,10 +284,12 @@ const taxonomy = memo(async () => {
         countryCode: r.country_code,
         country: countryName(r.country_code),
         label: r.state && r.state !== r.name ? `${r.name}, ${r.state}` : r.name,
-        listed: byCity.get(r.id)!.listed,
-        categoryCount: byCity.get(r.id)!.categories,
+        listed: byCity.get(r.id)?.listed ?? 0,
+        categoryCount: byCity.get(r.id)?.categories ?? 0,
       }),
-    )
+    );
+  const cities = allCities
+    .filter((c) => byCity.has(c.id))
     // Featured cities lead every city list (lib/site.ts), then the most listings.
     .sort((a, b) => featuredRank(a.slug) - featuredRank(b.slug) || b.listed - a.listed || a.name.localeCompare(b.name));
   const categoryById = new Map(categories.map((c) => [c.id, c]));
@@ -300,6 +301,7 @@ const taxonomy = memo(async () => {
     categoryBySlug: new Map(categories.map((c) => [c.slug, c])),
     cities,
     cityById,
+    anyCityById: new Map(allCities.map((c) => [c.id, c])),
     cityBySlug: new Map(cities.map((c) => [c.slug, c])),
     // Biggest first (ties in city order), resolved to city and category objects.
     lists: lists
@@ -436,25 +438,27 @@ export async function getTopBusinesses({ city, limit, withQuote = false }: { cit
 
 // ── One business ────────────────────────────────────────────
 
-// The business with its published categories (first = best Google position), or undefined if unpublished.
+// The business with its published categories, or all of them if none is (first = best Google position).
 export async function getBusiness(slug: string) {
   const [row] = await sql<BusinessRow>(`select ${COLUMNS} from businesses b where b.slug = $1`, [slug]);
   if (!row) return undefined;
-  const [{ categoryById, cityById, published: isPublished }, cats] = await Promise.all([
+  const [{ categoryById, anyCityById, published: isPublished }, cats] = await Promise.all([
     taxonomy(),
     sql<{ category_id: number; city_id: number }>(
       `select category_id, city_id from business_categories where business_id = $1 order by google_position nulls last, category_id`,
       [row.id],
     ),
   ]);
-  const city = cityById.get(row.city_id);
-  const categories = cats.flatMap((c) => (isPublished.has(`${c.city_id}:${c.category_id}`) ? (categoryById.get(c.category_id) ?? []) : []));
+  const city = anyCityById.get(row.city_id);
+  // A business in no published list still opens: a copy added from the panel is often alone in its list.
+  const listed = cats.filter((c) => isPublished.has(`${c.city_id}:${c.category_id}`));
+  const categories = (listed.length ? listed : cats).flatMap((c) => categoryById.get(c.category_id) ?? []);
   if (!city || !categories.length) return undefined;
   return { business: toBusiness(row, city), categories };
 }
 
 export async function businessExists(slug: string) {
-  const rows = await sql(`select 1 from businesses b where b.slug = $1 and ${published("$2")}`, [slug, await unpublishedIds()]);
+  const rows = await sql(`select 1 from businesses b where b.slug = $1`, [slug]);
   return rows.length > 0;
 }
 
