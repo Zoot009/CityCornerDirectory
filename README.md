@@ -7,7 +7,7 @@ Postgres database through a read-only login.
 ## Setup
 
 ```bash
-cp .env.example .env   # set SITE_URL and WEB_DATABASE_URL
+cp .env.example .env   # set SITE_URL, WEB_DATABASE_URL and REVALIDATE_SECRET
 npm install
 npm run dev            # http://localhost:3000
 ```

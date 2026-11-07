@@ -199,7 +199,7 @@ export function toTsQuery(...parts: string[]) {
 // Per process, refreshed hourly; a failed load is retried on the next call.
 function memo<T>(load: () => Promise<T>, ttlMs = 60 * 60 * 1000) {
   let entry: { at: number; value: Promise<T> } | undefined;
-  return () => {
+  const get = () => {
     if (!entry || Date.now() - entry.at > ttlMs) {
       const value = load();
       entry = { at: Date.now(), value };
@@ -207,6 +207,8 @@ function memo<T>(load: () => Promise<T>, ttlMs = 60 * 60 * 1000) {
     }
     return entry.value;
   };
+  get.clear = () => void (entry = undefined);
+  return get;
 }
 
 const featuredRank = (slug: string) => {
@@ -314,6 +316,15 @@ const taxonomy = memo(async () => {
     published: new Set(lists.map((l) => `${l.city_id}:${l.category_id}`)),
   };
 });
+
+// Picks up a category added since the last load. publishedLists goes too: a taxonomy rebuilt on the old
+// lists would still treat the new category as unpublished.
+// ponytail: simultaneous misses each reload (the pool of 4 caps them); share one reload if that ever shows up.
+function reloadTaxonomy() {
+  publishedLists.clear();
+  taxonomy.clear();
+  return taxonomy();
+}
 
 export const getGroups = async () => (await taxonomy()).groups;
 export const getCategories = async () => (await taxonomy()).categories;
@@ -442,13 +453,17 @@ export async function getTopBusinesses({ city, limit, withQuote = false }: { cit
 export async function getBusiness(slug: string) {
   const [row] = await sql<BusinessRow>(`select ${COLUMNS} from businesses b where b.slug = $1`, [slug]);
   if (!row) return undefined;
-  const [{ categoryById, anyCityById, published: isPublished }, cats] = await Promise.all([
+  const [loaded, cats] = await Promise.all([
     taxonomy(),
     sql<{ category_id: number; city_id: number }>(
       `select category_id, city_id from business_categories where business_id = $1 order by google_position nulls last, category_id`,
       [row.id],
     ),
   ]);
+  // Reload once for a category that isn't loaded yet. Checks categoryById, not published: a category too small
+  // to publish in this city is normal, and reloading for it would re-read every list on ordinary page views.
+  const known = cats.every((c) => loaded.categoryById.has(c.category_id));
+  const { categoryById, anyCityById, published: isPublished } = known ? loaded : await reloadTaxonomy();
   const city = anyCityById.get(row.city_id);
   // A business in no published list still opens: a copy added from the panel is often alone in its list.
   const listed = cats.filter((c) => isPublished.has(`${c.city_id}:${c.category_id}`));
